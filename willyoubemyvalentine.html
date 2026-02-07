@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Will you be my Valentine?</title>
+  <style>
+    :root{--bg1:#ff8fa3;--bg2:#ffd1e3;--accent:#ff2d95}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg1),var(--bg2));}
+    .card{background:rgba(255,255,255,0.85);border-radius:20px;padding:36px 44px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.12);max-width:520px}
+    .profile{width:96px;height:96px;border-radius:8px;object-fit:contain;background:white;padding:6px;margin:0 auto 14px;display:block;box-shadow:0 8px 20px rgba(0,0,0,0.12)}
+    h1{margin:0 0 8px;font-size:28px;color:#935273}
+    p.lead{margin:0 0 24px;color:#985d79}
+    .buttons{display:flex;gap:18px;justify-content:center;align-items:center;position:relative}
+    .card{position:relative}
+    button{cursor:pointer;border:0;padding:14px 22px;border-radius:12px;font-size:18px;font-weight:600;transition:transform 300ms ease,box-shadow 200ms ease,background 200ms;}
+    #yesBtn{background:var(--accent);color:white;box-shadow:0 8px 20px rgba(255,45,149,0.28)}
+    #noBtn{background:transparent;color:var(--accent);border:2px solid rgba(255,45,149,0.18)}
+    #noBtn:hover{transform:translateY(-3px)}
+
+    .buttons.flipped #yesBtn{transform:translateX(110px) rotate(6deg) scale(1.02)}
+    .buttons.flipped #noBtn{transform:translateX(-110px) rotate(-6deg) scale(0.98)}
+    .small{font-size:12px;color:#7a3b5a;margin-top:14px}
+
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .popup{pointer-events:auto;background:white;padding:28px;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;transform:scale(0.9);opacity:0;transition:all 260ms ease}
+    .popup.show{transform:scale(1);opacity:1}
+    .heart{font-size:48px;margin-top:8px;color:var(--accent)}
+
+    .float-dot{position:fixed;width:20px;height:20px;border-radius:50%;opacity:0;animation:floatUp 2200ms ease forwards}
+    @keyframes floatUp{0%{transform:translateY(0) scale(0.6);opacity:1}100%{transform:translateY(-360px) scale(1);opacity:0}}
+  </style>
+</head>
+<body>
+  <div class="card">
+  <img id="profileImg" class="profile" alt="anush" style="display:none">
+  <h1>Will you be my Valentine?</h1>
+    <p class="lead">I wanted to ask you properly hehe</p>
+    <div class="buttons">
+      <button id="yesBtn">Yes</button>
+      <button id="noBtn">No</button>
+    </div>
+    <div class="small">(U can choose whatever :))</div>
+  </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="popup" id="popup">
+      <h2 id="popupText">Yay!</h2>
+    </div>
+  </div>
+
+  <script>
+    const yesBtn = document.getElementById('yesBtn');
+    const noBtn = document.getElementById('noBtn');
+    const overlay = document.getElementById('overlay');
+    const popup = document.getElementById('popup');
+
+    // try loading `anush` image with common extensions from same directory
+    (function(){
+      const img = document.getElementById('profileImg');
+      if(!img) return;
+      const exts = ['png','jpg','jpeg','webp','gif'];
+      let ix = 0;
+      img.style.display = 'none';
+      function tryNext(){
+        if(ix >= exts.length){ img.style.display = 'none'; return; }
+        const candidate = 'anush.' + exts[ix++];
+        img.onload = ()=>{ img.style.display = 'block'; };
+        img.onerror = ()=>{ tryNext(); };
+        img.src = candidate;
+      }
+      tryNext();
+    })();
+
+    let scale = 1;
+    const scaleStep = 1.18; // multiply factor when No clicked
+    const maxScale = 4;
+
+    let hoverCount = 0;
+    const hoverLimit = 3;
+    let flipping = false;
+    const flipMessages = [
+      'Are you sure?',
+      'Pleaseeeeeee',
+      'Are you 1000% sure?',
+      'Think about it'
+    ];
+
+    function triggerFlip(e){
+      if(flipping) return;
+      flipping = true;
+      const buttons = document.querySelector('.buttons');
+      buttons.classList.add('flipped');
+      showFloatingHeart(e.clientX || window.innerWidth/2, e.clientY || window.innerHeight/2);
+      const small = document.querySelector('.small');
+      const msg = flipMessages[(Math.max(0, hoverCount-1)) % flipMessages.length];
+      small.textContent = msg;
+      small.animate([{opacity:0.25, transform:'translateY(4px)'},{opacity:1, transform:'translateY(0)'}],{duration:360,easing:'ease-out'});
+      setTimeout(()=>{
+        buttons.classList.remove('flipped');
+        flipping = false;
+          if(hoverCount >= hoverLimit){
+            const small = document.querySelector('.small');
+            small.textContent = '(U can choose whatever :))';
+            noBtn.animate([{transform:'scale(1)'},{transform:'scale(1.08)'},{transform:'scale(1)'}],{duration:420});
+          }
+      },700);
+    }
+
+    noBtn.addEventListener('mouseenter', (e)=>{
+      if(hoverCount >= hoverLimit) return;
+      hoverCount++;
+      triggerFlip(e);
+    });
+
+    const noClickMessages = [
+      'Maybe u meant to click yes',
+      'Are you sure you want to say no?',
+      'So u hate me huh',
+      'please :(',
+      'So u want to break my heart huh',
+      'Pleaseeeeeeeeeeeeeeeeeeeeeee'
+    ];
+    let noClickCount = 0;
+
+    noBtn.addEventListener('click', (e)=>{
+      if(hoverCount < hoverLimit){
+        triggerFlip(e);
+        return;
+      }
+
+      scale = Math.min(maxScale, scale * 1.12);
+      yesBtn.style.transform = `scale(${scale})`;
+      yesBtn.style.boxShadow = '0 18px 40px rgba(255,45,149,0.28)';
+      const card = document.querySelector('.card');
+      card.animate([
+        { transform: 'translateY(0)' },
+        { transform: 'translateY(-6px)' },
+        { transform: 'translateY(0)' }
+      ], { duration: 300, easing: 'ease-out' });
+      // cycle playful no-click messages
+      noClickCount++;
+      const small = document.querySelector('.small');
+      const msg = noClickMessages[(noClickCount-1) % noClickMessages.length];
+      small.textContent = msg;
+      showFloatingHeart(e.clientX || window.innerWidth/2, e.clientY || window.innerHeight/2);
+    });
+
+    yesBtn.addEventListener('click', ()=>{
+      overlay.style.pointerEvents = 'auto';
+      popup.classList.add('show');
+      document.body.style.background = 'linear-gradient(135deg,#fff0f6,#ffeef8)';
+      document.querySelector('.card').style.display = 'none';
+      createConfetti();
+    });
+
+    function showFloatingHeart(x,y){
+      const dot = document.createElement('div');
+      dot.className = 'float-dot';
+      const size = 8 + Math.floor(Math.random()*18);
+      dot.style.width = size + 'px';
+      dot.style.height = size + 'px';
+      dot.style.left = (x - size/2) + 'px';
+      dot.style.top = (y - size/2) + 'px';
+      const colors = ['#ff2d95','#ff6aa7','#ffd1e3','#ff8fa3'];
+      dot.style.background = colors[Math.floor(Math.random()*colors.length)];
+      document.body.appendChild(dot);
+      setTimeout(()=> dot.remove(), 2400);
+    }
+
+    function createConfetti(){
+      const colors = ['#ff2d95','#ff6aa7','#ffd1e3','#ff8fa3'];
+      for(let i=0;i<28;i++){
+        const d = document.createElement('div');
+        d.className = 'float-dot';
+        const size = 8 + Math.floor(Math.random()*36);
+        d.style.width = size + 'px';
+        d.style.height = size + 'px';
+        d.style.left = (Math.random()*100) + 'vw';
+        d.style.top = (Math.random()*60 + 20) + 'vh';
+        d.style.animationDelay = (Math.random()*600) + 'ms';
+        d.style.background = colors[Math.floor(Math.random()*colors.length)];
+        document.body.appendChild(d);
+        setTimeout(()=> d.remove(), 3000 + Math.random()*1200);
+      }
+      // final message in popup
+      document.getElementById('popupText').textContent = 'OMG YOU SAID YES 😋😋😋😋😋';
+    }
+
+    (function(){
+      const card = document.querySelector('.card');
+      if(!card) return;
+      function pointInRect(x,y,rect){
+        return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      }
+      card.addEventListener('click', (ev)=>{
+        // if user clicked a real button element, let that proceed
+        if(ev.target.closest('button')) return;
+        const px = ev.clientX, py = ev.clientY;
+        // check transformed bounding boxes of buttons first
+        const yesRect = yesBtn.getBoundingClientRect();
+        const noRect = noBtn.getBoundingClientRect();
+        if(pointInRect(px,py,yesRect)){
+          yesBtn.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:px,clientY:py}));
+          return;
+        }
+        if(pointInRect(px,py,noRect)){
+          noBtn.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:px,clientY:py}));
+          return;
+        }
+        // fallback: left/right half of card
+        const rect = card.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        if(x < rect.width / 2){
+          yesBtn.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:ev.clientX,clientY:ev.clientY}));
+        } else {
+          noBtn.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:ev.clientX,clientY:ev.clientY}));
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
